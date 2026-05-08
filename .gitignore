@@ -1,0 +1,17 @@
+# Raw datasets are downloaded locally and are too large for GitHub.
+data/
+
+# Local copy of the course assignment brief.
+1_242B Final Project Description.pdf
+
+# Python and local runtime artifacts.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# LaTeX build artifacts.
+overleaf/build/
+
+# OS/editor artifacts.
+.DS_Store
+Thumbs.db

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Retail Demand Forecasting Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 32px; color: #1f2933; line-height: 1.45; }
+    h1, h2 { margin-bottom: 8px; }
+    table { border-collapse: collapse; margin: 16px 0 28px; min-width: 720px; }
+    th, td { border: 1px solid #d6d9de; padding: 8px 10px; text-align: right; }
+    th:first-child, td:first-child { text-align: left; }
+    th { background: #f1f4f8; }
+    img { max-width: 900px; width: 100%; display: block; margin: 12px 0 28px; border: 1px solid #d6d9de; }
+    .note { max-width: 900px; }
+  </style>
+</head>
+<body>
+  <h1>Retail Demand Forecasting</h1>
+  <p class="note">Validation results for next-day department-level Walmart demand forecasting on the final 56 days of the M5 validation data.</p>
+
+  <h2>Validation Metrics</h2>
+  <table>
+    <thead>
+      <tr><th>Model</th><th>MAE</th><th>RMSE</th><th>sMAPE (%)</th><th>WAPE (%)</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Lag MLP</td><td>54.800</td><td>95.480</td><td>12.92</td><td>9.10</td></tr>
+      <tr><td>Temporal Transformer</td><td>59.780</td><td>108.408</td><td>13.43</td><td>9.93</td></tr>
+      <tr><td>Seasonal naive 7</td><td>86.069</td><td>158.331</td><td>18.53</td><td>14.30</td></tr>
+      <tr><td>Moving average 28</td><td>104.758</td><td>180.311</td><td>18.94</td><td>17.40</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Model Comparison</h2>
+  <img src="figures/model_mae_comparison.png" alt="Model MAE comparison">
+
+  <h2>Training Curves</h2>
+  <img src="figures/training_curves.png" alt="Training and validation loss curves">
+
+  <h2>Example Forecasts</h2>
+  <img src="figures/forecast_CA_1_FOODS_3.png" alt="Forecast for CA_1_FOODS_3">
+  <img src="figures/forecast_CA_3_FOODS_3.png" alt="Forecast for CA_3_FOODS_3">
+  <img src="figures/forecast_WI_2_FOODS_3.png" alt="Forecast for WI_2_FOODS_3">
+
+  <h2>Transformer Error Breakdown</h2>
+  <img src="figures/transformer_mae_by_department.png" alt="Transformer MAE by department">
+</body>
+</html>
