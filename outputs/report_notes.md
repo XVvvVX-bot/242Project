@@ -8,7 +8,7 @@ Retailers need daily demand forecasts to decide how much inventory to replenish,
 
 The original M5 data contains daily item-level unit sales across Walmart stores from 2011-01-29 through 2016-04-24. To keep training computationally feasible and operationally interpretable, this project aggregates item sales into 70 store-department series: 10 stores times 7 departments. The supervised learning task is:
 
-Given the previous 56 days of sales for a store-department series, plus calendar variables, predict the next day's unit demand.
+Given a tuned rolling history of sales for a store-department series, plus calendar variables, predict the next day's unit demand.
 
 The final 56 days are held out for validation.
 
@@ -19,22 +19,29 @@ Baselines:
 - Seasonal naive: next demand equals demand from the same weekday one week earlier.
 - Moving average: next demand equals the previous 28-day average.
 - Lag MLP: feed-forward neural network over lagged sales, current calendar features, and a learned series embedding.
+- RevIN variants: the same neural architectures trained with reversible instance normalization, where each input window is normalized by its own mean and standard deviation and predictions are transformed back with those same statistics.
 
 Main model:
 
 - Temporal Transformer encoder trained from scratch.
 - Inputs are normalized lagged demand and calendar features.
 - The model uses positional embeddings and a learned series embedding so one global network can share statistical strength across departments and stores.
+- RevIN is evaluated as an additional advanced normalization procedure for nonstationary demand.
+- Hyperparameter tuning explored lookback length, learning rate, neural width/depth, dropout, and embedding size.
+- Final MLP settings: 84-day lookback, hidden layers (384, 192), dropout 0.15, embedding size 24, learning rate 0.0007.
+- Final Transformer settings: 56-day lookback, d_model 96, 4 attention heads, 2 encoder layers, dropout 0.15, learning rate 0.0007.
 - Objective: minimize mean absolute error on normalized demand using AdamW with early model selection by validation MAE.
 
 ## Current validation result
 
-Best model by MAE: lag_mlp
+Best model by MAE: lag_mlp_revin
 
 | Model | MAE | RMSE | sMAPE (%) | WAPE (%) |
 |---|---:|---:|---:|---:|
-| lag_mlp | 54.800 | 95.480 | 12.92 | 9.10 |
-| temporal_transformer | 59.780 | 108.408 | 13.43 | 9.93 |
+| lag_mlp_revin | 52.914 | 90.672 | 12.66 | 8.79 |
+| lag_mlp | 53.982 | 93.920 | 12.77 | 8.97 |
+| temporal_transformer_revin | 56.616 | 99.007 | 12.87 | 9.41 |
+| temporal_transformer | 59.180 | 107.437 | 13.18 | 9.83 |
 | seasonal_naive_7 | 86.069 | 158.331 | 18.53 | 14.30 |
 | moving_average_28 | 104.758 | 180.311 | 18.94 | 17.40 |
 

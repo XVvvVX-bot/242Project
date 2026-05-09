@@ -14,7 +14,14 @@ def build_payload() -> dict:
     preds = pd.read_csv(OUT / "predictions.csv")
     metrics = pd.read_csv(OUT / "metrics.csv")
 
-    model_order = ["lag_mlp", "temporal_transformer", "seasonal_naive_7", "moving_average_28"]
+    model_order = [
+        "lag_mlp",
+        "lag_mlp_revin",
+        "temporal_transformer",
+        "temporal_transformer_revin",
+        "seasonal_naive_7",
+        "moving_average_28",
+    ]
     metrics["model"] = pd.Categorical(metrics["model"], categories=model_order, ordered=True)
     metrics = metrics.sort_values("model")
 
@@ -57,7 +64,9 @@ def build_payload() -> dict:
         "records": records,
         "model_labels": {
             "lag_mlp": "Lag MLP",
+            "lag_mlp_revin": "Lag MLP + RevIN",
             "temporal_transformer": "Temporal Transformer",
+            "temporal_transformer_revin": "Transformer + RevIN",
             "seasonal_naive_7": "Seasonal Naive",
             "moving_average_28": "Moving Average",
         },
@@ -81,6 +90,8 @@ def write_dashboard(payload: dict) -> None:
       --bg: #f7f8fb;
       --accent: #1f6feb;
       --green: #207567;
+      --purple: #7c3aed;
+      --teal: #0f766e;
       --orange: #b35c00;
       --red: #b42318;
     }}
@@ -385,14 +396,16 @@ def write_dashboard(payload: dict) -> None:
     const colors = {{
       actual: "#111827",
       lag_mlp: "#1f6feb",
+      lag_mlp_revin: "#7c3aed",
       temporal_transformer: "#207567",
+      temporal_transformer_revin: "#0f766e",
       seasonal_naive_7: "#b35c00",
       moving_average_28: "#b42318"
     }};
-    const modelOrder = ["lag_mlp", "temporal_transformer", "seasonal_naive_7", "moving_average_28"];
+    const modelOrder = ["lag_mlp", "lag_mlp_revin", "temporal_transformer", "temporal_transformer_revin", "seasonal_naive_7", "moving_average_28"];
     const state = {{
       series: "CA_1_FOODS_3",
-      visible: new Set(["actual", "lag_mlp", "temporal_transformer", "seasonal_naive_7"])
+      visible: new Set(["actual", "lag_mlp", "lag_mlp_revin", "temporal_transformer_revin", "seasonal_naive_7"])
     }};
 
     function formatNumber(value, digits = 2) {{
@@ -613,12 +626,14 @@ def write_dashboard(payload: dict) -> None:
 </html>
 """
     (OUT / "interactive_dashboard.html").write_text(html, encoding="utf-8")
+    (OUT / "dashboard.html").write_text(html, encoding="utf-8")
 
 
 def main() -> None:
     payload = build_payload()
     write_dashboard(payload)
     print(OUT / "interactive_dashboard.html")
+    print(OUT / "dashboard.html")
 
 
 if __name__ == "__main__":

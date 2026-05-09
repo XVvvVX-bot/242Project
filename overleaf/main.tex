@@ -26,7 +26,7 @@
 \maketitle
 
 \begin{abstract}
-Retailers rely on short-term demand forecasts to decide how much inventory to replenish, where to allocate labor, and when to investigate possible stockout risk. This project studies daily retail demand forecasting using the public M5 Forecasting dataset, which contains Walmart item-level sales and calendar information. We aggregate item-level sales into 70 operational time series, one for each store-department pair, and train models to predict next-day unit demand from the previous 56 days of sales and calendar covariates. We compare two simple retail forecasting baselines, a lag-based neural network, and a temporal Transformer trained from scratch. On the final 56-day validation period, the lag MLP achieves the lowest mean absolute error, while the temporal Transformer substantially improves over seasonal naive and moving-average baselines. The results suggest that neural models can extract useful short-term demand patterns, but simpler neural architectures may outperform attention models when the forecasting target is aggregated and dominated by recent lag structure.
+Retailers rely on short-term demand forecasts to decide how much inventory to replenish, where to allocate labor, and when to investigate possible stockout risk. This project studies daily retail demand forecasting using the public M5 Forecasting dataset, which contains Walmart item-level sales and calendar information. We aggregate item-level sales into 70 operational time series, one for each store-department pair, and train models to predict next-day unit demand from rolling sales histories and calendar covariates. We compare two simple retail forecasting baselines, a lag-based neural network, a temporal Transformer trained from scratch, and reversible instance normalization (RevIN) variants of both neural models. After bounded hyperparameter tuning, the Lag MLP + RevIN model achieves the lowest mean absolute error on the final 56-day validation period. RevIN improves both neural architectures, suggesting that local window normalization is useful for nonstationary retail demand.
 \end{abstract}
 
 \section{Project Motivation and Use Case}
@@ -39,27 +39,33 @@ The use case for this project is a department-level planning tool for a large re
 
 The data source is the M5 Forecasting - Accuracy dataset, originally released through Kaggle and mirrored publicly on Zenodo. The dataset contains daily unit sales for Walmart products across stores from 2011-01-29 through 2016-04-24, along with calendar variables such as weekday, month, events, and SNAP indicators. We use \texttt{sales\_train\_validation.csv} and \texttt{calendar.csv}. The public mirror used for the project is \url{https://zenodo.org/records/12636070}, and the original competition page is \url{https://www.kaggle.com/c/m5-forecasting-accuracy}.
 
-The raw data contains thousands of item-store time series. To create a tractable but realistic forecasting task, we aggregate item-level daily sales into 70 store-department series: 10 stores times 7 departments. For each series, the target variable is daily unit demand. Each supervised training example is created with a rolling window. The input is the previous 56 days of demand and associated calendar features, and the label is the next day's demand.
+The raw data contains thousands of item-store time series. To create a tractable but realistic forecasting task, we aggregate item-level daily sales into 70 store-department series: 10 stores times 7 departments. For each series, the target variable is daily unit demand. Each supervised training example is created with a rolling window. The input is recent historical demand and associated calendar features, and the label is the next day's demand. Hyperparameter tuning considers 56-, 84-, and 112-day lookback windows; the final MLP family uses 84 days, while the final Transformer family uses 56 days.
 
 Formally, for store-department series $s$ and day $t$, the model learns a function
 \begin{equation}
-    y_{s,t} = f_{\theta}\left(y_{s,t-56:t-1}, c_{s,t-56:t-1}, c_{s,t}, s\right),
+    y_{s,t} = f_{\theta}\left(y_{s,t-L:t-1}, c_{s,t-L:t-1}, c_{s,t}, s\right),
 \end{equation}
-where $y_{s,t}$ is daily unit demand, $c$ contains calendar covariates, and $s$ identifies the store-department series. The final 56 days are held out for validation. Each series is normalized using its training-period mean and standard deviation so that departments with very different demand levels can be learned by a single global model.
+where $y_{s,t}$ is daily unit demand, $c$ contains calendar covariates, $s$ identifies the store-department series, and $L$ is the tuned lookback length. The final 56 days are held out for validation. The original neural models normalize each series using its training-period mean and standard deviation so that departments with very different demand levels can be learned by a single global model. The RevIN variants additionally normalize each rolling input window using only that window's mean and standard deviation.
 
 The main calendar features are day-of-week sine and cosine terms, month sine and cosine terms, an event indicator, and the state-specific SNAP indicator. The use of cyclic sine and cosine variables avoids treating Sunday and Monday or December and January as artificially far apart.
 
 \section{Methodology}
 
-We train and evaluate four models: two operational baselines and two neural network models.
+We train and evaluate six models: two operational baselines, two neural network models, and RevIN variants of both neural networks.
 
 The first baseline is seasonal naive. It predicts that tomorrow's demand will equal demand from the same weekday one week earlier. This is a useful retail baseline because store traffic and shopping behavior often have strong weekly seasonality.
 
 The second baseline is a 28-day moving average. It predicts tomorrow's demand as the average demand over the previous 28 days. This baseline captures the recent demand level while smoothing short-term noise.
 
-The first neural model is a lag MLP, or multi-layer perceptron. The MLP receives the previous 56 normalized sales values as a fixed vector, current calendar features, and a learned series embedding. The series embedding allows the model to learn persistent differences between store-department pairs. The input is passed through fully connected layers with ReLU activations and dropout, and the output is a one-step-ahead normalized demand prediction. This model treats the lag window as a fixed feature vector; it does not explicitly use self-attention, but each lag position has a consistent meaning.
+The first neural model is a lag MLP, or multi-layer perceptron. The MLP receives normalized lagged sales values as a fixed vector, current calendar features, and a learned series embedding. The series embedding allows the model to learn persistent differences between store-department pairs. The input is passed through fully connected layers with ReLU activations and dropout, and the output is a one-step-ahead normalized demand prediction. This model treats the lag window as a fixed feature vector; it does not explicitly use self-attention, but each lag position has a consistent meaning.
 
-The advanced model is a temporal Transformer encoder trained from scratch. Instead of flattening the 56-day history, the Transformer reads it as an ordered sequence. For each of the previous 56 days, the model receives normalized demand and calendar features. Positional embeddings encode the order of days in the sequence, and a learned series embedding is added so the model can share information across series while preserving store-department identity. The self-attention layers allow the model to learn which previous days are most useful for predicting the next day. For example, the model can attend to the same weekday one week earlier, recent demand changes, event days, or longer-term patterns within the 56-day history.
+The advanced model is a temporal Transformer encoder trained from scratch. Instead of flattening the history, the Transformer reads it as an ordered sequence. For each day in the lookback window, the model receives normalized demand and calendar features. Positional embeddings encode the order of days in the sequence, and a learned series embedding is added so the model can share information across series while preserving store-department identity. The self-attention layers allow the model to learn which previous days are most useful for predicting the next day. For example, the model can attend to the same weekday one week earlier, recent demand changes, event days, or longer-term patterns within the lookback history.
+
+We add reversible instance normalization (RevIN) as an additional time-series normalization experiment. For each training example, RevIN computes the mean and standard deviation of the input window, normalizes the input window using those statistics, trains the model to predict the next day in this local normalized space, and then reverses the transformation:
+\begin{equation}
+    \hat{y}_{s,t} = \hat{z}_{s,t}\sigma_{s,t-56:t-1} + \mu_{s,t-56:t-1}.
+\end{equation}
+Only the input window statistics are used, so the target day is never leaked into the features. We also provide the local mean and standard deviation as auxiliary features so the models can still use information about the local demand level.
 
 Both neural models are trained to minimize mean absolute error on normalized demand. The optimization problem is
 \begin{equation}
@@ -69,7 +75,7 @@ where $X_i$ is the input window and calendar information, $Y_i$ is the normalize
 
 \section{Experimental Setup}
 
-The data is split chronologically. All models train on the earlier portion of the time series and validate on the final 56 days. This avoids leakage from future demand into past forecasts. The neural models use a sequence length of 56 days, batch size 512, AdamW optimizer, and validation model selection based on mean absolute error. The temporal Transformer uses two encoder layers, four attention heads, hidden dimension 48, dropout 0.10, and learned positional and series embeddings.
+The data is split chronologically. All models train on the earlier portion of the time series and validate on the final 56 days. This avoids leakage from future demand into past forecasts. After adding RevIN, both neural model families are tuned with a bounded sweep over lookback length, learning rate, model width/depth, dropout, and embedding size. The final MLP configuration uses an 84-day lookback, hidden layers 384 and 192, dropout 0.15, embedding size 24, and learning rate 0.0007. The final Transformer configuration uses a 56-day lookback, model dimension 96, four attention heads, two encoder layers, dropout 0.15, and learning rate 0.0007. Final training uses batch size 512, AdamW optimizer, 10 epochs, and validation model selection based on mean absolute error.
 
 We evaluate models using mean absolute error (MAE), root mean squared error (RMSE), symmetric mean absolute percentage error (sMAPE), and weighted absolute percentage error (WAPE). MAE is the primary metric because it has a direct operational interpretation: average absolute unit-sales error per store-department day. RMSE penalizes large errors more heavily, while sMAPE and WAPE provide percentage-style measures that are easier to compare across scales.
 
@@ -81,8 +87,10 @@ We evaluate models using mean absolute error (MAE), root mean squared error (RMS
 \toprule
 Model & MAE & RMSE & sMAPE (\%) & WAPE (\%) \\
 \midrule
-Lag MLP & 54.800 & 95.480 & 12.92 & 9.10 \\
-Temporal Transformer & 59.780 & 108.408 & 13.43 & 9.93 \\
+Lag MLP + RevIN & 52.914 & 90.672 & 12.66 & 8.79 \\
+Lag MLP & 53.982 & 93.920 & 12.77 & 8.97 \\
+Temporal Transformer + RevIN & 56.616 & 99.007 & 12.87 & 9.41 \\
+Temporal Transformer & 59.180 & 107.437 & 13.18 & 9.83 \\
 Seasonal naive & 86.069 & 158.331 & 18.53 & 14.30 \\
 Moving average 28 & 104.758 & 180.311 & 18.94 & 17.40 \\
 \bottomrule
@@ -98,9 +106,9 @@ Moving average 28 & 104.758 & 180.311 & 18.94 & 17.40 \\
 
 \section{Results and Discussion}
 
-Both neural models outperform the simple operational baselines by a substantial margin. The lag MLP achieves the best validation MAE of 54.80 units per store-department day. Compared with seasonal naive, which has MAE 86.07, the lag MLP reduces MAE by about 36 percent. The temporal Transformer achieves MAE 59.78, reducing error by about 31 percent relative to seasonal naive. The moving-average baseline performs worst, suggesting that simple smoothing loses important weekly and recent-demand structure.
+All neural models outperform the simple operational baselines by a substantial margin. The Lag MLP + RevIN model achieves the best validation MAE of 52.91 units per store-department day and WAPE of 8.79 percent. Compared with seasonal naive, which has MAE 86.07, Lag MLP + RevIN reduces MAE by about 39 percent. RevIN also improves the Transformer, reducing MAE from 59.18 to 56.62. The moving-average baseline performs worst, suggesting that simple smoothing loses important weekly and recent-demand structure.
 
-The most important result is that the advanced temporal Transformer improves substantially over non-neural baselines but does not outperform the simpler lag MLP in this configuration. This is a valid and useful scientific outcome. It suggests that for aggregated department-level forecasts, recent lag values and calendar variables contain enough signal for a compact feed-forward neural network to perform very well. The Transformer has greater representational flexibility, but its advantage may be more visible at item-level granularity, with longer training, richer price and promotion features, or a multi-step forecasting objective.
+The most important result is that RevIN improves both neural architectures. This supports the hypothesis that local distribution shifts matter in retail demand forecasting. The advanced temporal Transformer improves substantially over non-neural baselines, and the RevIN Transformer closes part of the gap to the MLP. However, it still does not outperform Lag MLP + RevIN in this configuration. This suggests that for aggregated department-level forecasts, recent lag values and local demand level contain enough signal for a compact feed-forward neural network to perform very well.
 
 \begin{figure}[H]
 \centering
@@ -109,7 +117,7 @@ The most important result is that the advanced temporal Transformer improves sub
 \label{fig:training-curves}
 \end{figure}
 
-The training curves show that the lag MLP converges quickly and maintains low validation error. The Transformer continues improving over epochs, which suggests it was still learning useful structure by the end of the run. However, its validation error remains above the MLP's error. This pattern does not indicate a failed Transformer; rather, it shows that higher-capacity attention models are not automatically better for every forecasting problem. Model choice should be evaluated empirically against strong baselines.
+The training curves show that the lag MLP converges quickly and that RevIN provides a consistent validation improvement. The Transformer continues improving over epochs, and the RevIN Transformer is better than the standard Transformer. This pattern does not indicate a failed Transformer; rather, it shows that higher-capacity attention models are not automatically better for every forecasting problem. Model choice should be evaluated empirically against strong baselines and normalization choices.
 
 \begin{figure}[H]
 \centering
@@ -139,9 +147,9 @@ Security concerns are also relevant. Demand forecasts can reveal commercially se
 
 \section{Conclusion}
 
-This project builds a complete data-to-model pipeline for practical retail demand forecasting. We use the public M5 Walmart sales dataset, aggregate item-level sales into 70 store-department time series, create rolling-window supervised learning examples, and train our own neural forecasting models. The best model is the lag MLP, which outperforms seasonal naive and moving-average baselines on the final 56-day validation period. The temporal Transformer is a meaningful advanced methodology and also improves substantially over simple baselines, but it does not beat the simpler neural model in the current setup.
+This project builds a complete data-to-model pipeline for practical retail demand forecasting. We use the public M5 Walmart sales dataset, aggregate item-level sales into 70 store-department time series, create rolling-window supervised learning examples, and train our own neural forecasting models. The best model is Lag MLP + RevIN, which outperforms seasonal naive, moving-average, standard MLP, and standard Transformer models on the final 56-day validation period. The temporal Transformer is a meaningful advanced methodology and also improves substantially over simple baselines; adding RevIN further improves it.
 
-The main lesson is that neural forecasting can add value over simple rules, but model complexity must be justified by validation performance. For this aggregated demand task, a compact lag-based neural model is strong. Future work should add price features, train at item-store granularity, test probabilistic forecasts, and evaluate forecasts based on inventory costs such as stockout penalties and holding costs.
+The main lesson is that neural forecasting can add value over simple rules, but model complexity and normalization choices must be justified by validation performance. For this aggregated demand task, a compact lag-based neural model with RevIN is strongest. Future work should add price features, train at item-store granularity, test probabilistic forecasts, and evaluate forecasts based on inventory costs such as stockout penalties and holding costs.
 
 \appendix
 \section{Reproducibility}
@@ -150,7 +158,7 @@ The project was implemented in Python using pandas, NumPy, PyTorch, and matplotl
 
 \begin{quote}
 \small
-\texttt{python src\textbackslash train\_forecaster.py -{}-epochs 8}\\
+\texttt{python src\textbackslash train\_forecaster.py -{}-epochs 10}\\
 \texttt{-{}-max-train-windows-per-series 900 -{}-batch-size 512}
 \end{quote}
 

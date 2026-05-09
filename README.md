@@ -20,7 +20,7 @@ The pipeline aggregates item-level daily sales into 70 store-department time ser
 
 For each store-department series, predict next-day unit sales from:
 
-- the previous 56 days of demand,
+- a rolling demand window tuned by model family,
 - calendar features such as day of week, month, event indicator, and SNAP indicator,
 - a learned series identity embedding.
 
@@ -32,6 +32,7 @@ The holdout set is the final 56 days. This is a supervised time-series forecasti
 - Moving-average baseline: predicts the mean of the previous 28 days.
 - Lag MLP: neural baseline trained from lagged demand and current calendar features.
 - Temporal Transformer: Transformer encoder trained from scratch on lagged demand, calendar features, and series embeddings.
+- RevIN variants: Lag MLP + RevIN and Temporal Transformer + RevIN, where each input window is normalized by its own mean and standard deviation and predictions are reversed back to unit-sales scale.
 
 ## Run
 
@@ -42,8 +43,10 @@ python src\train_forecaster.py
 The checked-in result used:
 
 ```powershell
-python src\train_forecaster.py --epochs 8 --max-train-windows-per-series 900 --batch-size 512
+python src\train_forecaster.py --epochs 10 --max-train-windows-per-series 900 --batch-size 512
 ```
+
+The tuned defaults use a 84-day window, hidden layers 384/192, dropout 0.15, embedding size 24, and learning rate 0.0007 for the MLP family. The Transformer family uses a 56-day window, d_model 96, 4 heads, 2 encoder layers, dropout 0.15, and learning rate 0.0007.
 
 Outputs are written to:
 

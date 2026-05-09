@@ -7,6 +7,7 @@ import random
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -22,15 +23,20 @@ warnings.filterwarnings("ignore", category=pd.errors.PerformanceWarning)
 class Config:
     data_dir: Path = Path("data/m5")
     out_dir: Path = Path("outputs")
-    seq_len: int = 56
     val_days: int = 56
     batch_size: int = 512
     epochs: int = 5
-    lr: float = 1e-3
-    d_model: int = 48
+    mlp_seq_len: int = 84
+    mlp_lr: float = 7e-4
+    transformer_seq_len: int = 56
+    transformer_lr: float = 7e-4
+    d_model: int = 96
     n_heads: int = 4
     n_layers: int = 2
-    dropout: float = 0.10
+    dropout: float = 0.15
+    mlp_hidden: tuple[int, ...] = (384, 192)
+    mlp_dropout: float = 0.15
+    mlp_emb_dim: int = 24
     seed: int = 242
     max_train_windows_per_series: int = 900
 
@@ -110,6 +116,7 @@ class WindowDataset(Dataset):
         stds: np.ndarray,
         indices: list[tuple[int, int]],
         seq_len: int,
+        use_revin: bool = False,
     ) -> None:
         self.y_norm = y_norm
         self.y_raw = y_raw
@@ -118,6 +125,7 @@ class WindowDataset(Dataset):
         self.stds = stds
         self.indices = indices
         self.seq_len = seq_len
+        self.use_revin = use_revin
 
     def __len__(self) -> int:
         return len(self.indices)
@@ -125,35 +133,64 @@ class WindowDataset(Dataset):
     def __getitem__(self, idx: int) -> dict[str, torch.Tensor]:
         s, t = self.indices[idx]
         start = t - self.seq_len
-        lag = self.y_norm[s, start:t, None]
         cov_seq = self.x_cov[s, start:t, :]
         current_cov = self.x_cov[s, t, :]
+        if self.use_revin:
+            raw_window = self.y_raw[s, start:t].astype(np.float32)
+            local_mean = np.float32(raw_window.mean())
+            local_std = np.float32(raw_window.std())
+            if local_std < 1.0:
+                local_std = np.float32(1.0)
+            lag = ((raw_window - local_mean) / local_std)[:, None]
+            target = np.float32((self.y_raw[s, t] - local_mean) / local_std)
+            mean = local_mean
+            std = local_std
+
+            mean_feature = np.float32((local_mean - self.means[s]) / self.stds[s])
+            std_feature = np.float32(local_std / self.stds[s])
+            stat_seq = np.tile(np.array([[mean_feature, std_feature]], dtype=np.float32), (self.seq_len, 1))
+            cov_seq = np.concatenate([cov_seq, stat_seq], axis=1)
+            current_cov = np.concatenate(
+                [current_cov, np.array([mean_feature, std_feature], dtype=np.float32)]
+            )
+        else:
+            lag = self.y_norm[s, start:t, None]
+            target = np.float32(self.y_norm[s, t])
+            mean = np.float32(self.means[s])
+            std = np.float32(self.stds[s])
         x_seq = np.concatenate([lag, cov_seq], axis=1)
         return {
             "x_seq": torch.tensor(x_seq, dtype=torch.float32),
             "current_cov": torch.tensor(current_cov, dtype=torch.float32),
             "series": torch.tensor(s, dtype=torch.long),
-            "target": torch.tensor(self.y_norm[s, t], dtype=torch.float32),
+            "target": torch.tensor(target, dtype=torch.float32),
             "target_raw": torch.tensor(self.y_raw[s, t], dtype=torch.float32),
-            "mean": torch.tensor(self.means[s], dtype=torch.float32),
-            "std": torch.tensor(self.stds[s], dtype=torch.float32),
+            "mean": torch.tensor(mean, dtype=torch.float32),
+            "std": torch.tensor(std, dtype=torch.float32),
             "time": torch.tensor(t, dtype=torch.long),
         }
 
 
 class LagMLP(nn.Module):
-    def __init__(self, seq_len: int, cov_dim: int, n_series: int, emb_dim: int = 8) -> None:
+    def __init__(
+        self,
+        seq_len: int,
+        cov_dim: int,
+        n_series: int,
+        hidden_sizes: Sequence[int] = (128, 64),
+        dropout: float = 0.10,
+        emb_dim: int = 8,
+    ) -> None:
         super().__init__()
         self.series_emb = nn.Embedding(n_series, emb_dim)
         in_dim = seq_len + cov_dim + emb_dim
-        self.net = nn.Sequential(
-            nn.Linear(in_dim, 128),
-            nn.ReLU(),
-            nn.Dropout(0.10),
-            nn.Linear(128, 64),
-            nn.ReLU(),
-            nn.Linear(64, 1),
-        )
+        layers: list[nn.Module] = []
+        prev_dim = in_dim
+        for hidden_dim in hidden_sizes:
+            layers.extend([nn.Linear(prev_dim, hidden_dim), nn.ReLU(), nn.Dropout(dropout)])
+            prev_dim = hidden_dim
+        layers.append(nn.Linear(prev_dim, 1))
+        self.net = nn.Sequential(*layers)
 
     def forward(self, x_seq: torch.Tensor, current_cov: torch.Tensor, series: torch.Tensor) -> torch.Tensor:
         lag = x_seq[:, :, 0]
@@ -233,9 +270,12 @@ def train_model(
     val_loader: DataLoader,
     cfg: Config,
     device: torch.device,
+    lr: float | None = None,
 ) -> tuple[nn.Module, list[dict[str, float]]]:
     model.to(device)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=1e-4)
+    if lr is None:
+        raise ValueError("train_model now requires an explicit learning rate per model family.")
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
     history: list[dict[str, float]] = []
     best_val = float("inf")
     best_state = None
@@ -422,7 +462,9 @@ def plot_outputs(preds: pd.DataFrame, metrics: pd.DataFrame, history: pd.DataFra
         plt.savefig(fig_dir / f"forecast_{safe_name}.png", dpi=180)
         plt.close()
 
-    transformer = preds[preds["model"] == "temporal_transformer"].copy()
+    transformer = preds[preds["model"] == "temporal_transformer_revin"].copy()
+    if transformer.empty:
+        transformer = preds[preds["model"] == "temporal_transformer"].copy()
     if not transformer.empty:
         transformer["abs_error"] = (transformer["prediction"] - transformer["actual"]).abs()
         dept = (
@@ -453,7 +495,7 @@ Retailers need daily demand forecasts to decide how much inventory to replenish,
 
 The original M5 data contains daily item-level unit sales across Walmart stores from 2011-01-29 through 2016-04-24. To keep training computationally feasible and operationally interpretable, this project aggregates item sales into 70 store-department series: 10 stores times 7 departments. The supervised learning task is:
 
-Given the previous 56 days of sales for a store-department series, plus calendar variables, predict the next day's unit demand.
+Given a tuned rolling history of sales for a store-department series, plus calendar variables, predict the next day's unit demand.
 
 The final 56 days are held out for validation.
 
@@ -464,12 +506,17 @@ Baselines:
 - Seasonal naive: next demand equals demand from the same weekday one week earlier.
 - Moving average: next demand equals the previous 28-day average.
 - Lag MLP: feed-forward neural network over lagged sales, current calendar features, and a learned series embedding.
+- RevIN variants: the same neural architectures trained with reversible instance normalization, where each input window is normalized by its own mean and standard deviation and predictions are transformed back with those same statistics.
 
 Main model:
 
 - Temporal Transformer encoder trained from scratch.
 - Inputs are normalized lagged demand and calendar features.
 - The model uses positional embeddings and a learned series embedding so one global network can share statistical strength across departments and stores.
+- RevIN is evaluated as an additional advanced normalization procedure for nonstationary demand.
+- Hyperparameter tuning explored lookback length, learning rate, neural width/depth, dropout, and embedding size.
+- Final MLP settings: {cfg.mlp_seq_len}-day lookback, hidden layers {cfg.mlp_hidden}, dropout {cfg.mlp_dropout}, embedding size {cfg.mlp_emb_dim}, learning rate {cfg.mlp_lr}.
+- Final Transformer settings: {cfg.transformer_seq_len}-day lookback, d_model {cfg.d_model}, {cfg.n_heads} attention heads, {cfg.n_layers} encoder layers, dropout {cfg.dropout}, learning rate {cfg.transformer_lr}.
 - Objective: minimize mean absolute error on normalized demand using AdamW with early model selection by validation MAE.
 
 ## Current validation result
@@ -502,12 +549,34 @@ def main() -> None:
     parser.add_argument("--epochs", type=int, default=8)
     parser.add_argument("--max-train-windows-per-series", type=int, default=900)
     parser.add_argument("--batch-size", type=int, default=512)
+    parser.add_argument("--mlp-seq-len", type=int, default=84)
+    parser.add_argument("--mlp-lr", type=float, default=7e-4)
+    parser.add_argument("--transformer-seq-len", type=int, default=56)
+    parser.add_argument("--transformer-lr", type=float, default=7e-4)
+    parser.add_argument("--mlp-hidden", type=str, default="384,192")
+    parser.add_argument("--mlp-dropout", type=float, default=0.15)
+    parser.add_argument("--mlp-emb-dim", type=int, default=24)
+    parser.add_argument("--d-model", type=int, default=96)
+    parser.add_argument("--n-heads", type=int, default=4)
+    parser.add_argument("--n-layers", type=int, default=2)
+    parser.add_argument("--dropout", type=float, default=0.15)
     args = parser.parse_args()
 
     cfg = Config(
         epochs=args.epochs,
         max_train_windows_per_series=args.max_train_windows_per_series,
         batch_size=args.batch_size,
+        mlp_seq_len=args.mlp_seq_len,
+        mlp_lr=args.mlp_lr,
+        transformer_seq_len=args.transformer_seq_len,
+        transformer_lr=args.transformer_lr,
+        mlp_hidden=tuple(int(x.strip()) for x in args.mlp_hidden.split(",") if x.strip()),
+        mlp_dropout=args.mlp_dropout,
+        mlp_emb_dim=args.mlp_emb_dim,
+        d_model=args.d_model,
+        n_heads=args.n_heads,
+        n_layers=args.n_layers,
+        dropout=args.dropout,
     )
     set_seed(cfg.seed)
     ensure_dirs(cfg)
@@ -521,44 +590,129 @@ def main() -> None:
     stds = np.where(stds < 1.0, 1.0, stds)
     y_norm = (y - means[:, None]) / stds[:, None]
 
-    train_indices, val_indices = build_indices(
-        n_series=n_series,
-        n_days=n_days,
-        seq_len=cfg.seq_len,
-        train_end=train_end,
-        max_train_windows_per_series=cfg.max_train_windows_per_series,
+    def make_loaders(seq_len: int, use_revin: bool) -> tuple[DataLoader, DataLoader]:
+        train_indices, val_indices = build_indices(
+            n_series=n_series,
+            n_days=n_days,
+            seq_len=seq_len,
+            train_end=train_end,
+            max_train_windows_per_series=cfg.max_train_windows_per_series,
+        )
+        train_ds = WindowDataset(y_norm, y, x_cov, means, stds, train_indices, seq_len, use_revin=use_revin)
+        val_ds = WindowDataset(y_norm, y, x_cov, means, stds, val_indices, seq_len, use_revin=use_revin)
+        return (
+            DataLoader(train_ds, batch_size=cfg.batch_size, shuffle=True),
+            DataLoader(val_ds, batch_size=cfg.batch_size, shuffle=False),
+        )
+
+    mlp_train_loader, mlp_val_loader = make_loaders(cfg.mlp_seq_len, use_revin=False)
+    mlp_revin_train_loader, mlp_revin_val_loader = make_loaders(cfg.mlp_seq_len, use_revin=True)
+    transformer_train_loader, transformer_val_loader = make_loaders(cfg.transformer_seq_len, use_revin=False)
+    transformer_revin_train_loader, transformer_revin_val_loader = make_loaders(
+        cfg.transformer_seq_len, use_revin=True
     )
-    train_ds = WindowDataset(y_norm, y, x_cov, means, stds, train_indices, cfg.seq_len)
-    val_ds = WindowDataset(y_norm, y, x_cov, means, stds, val_indices, cfg.seq_len)
-    train_loader = DataLoader(train_ds, batch_size=cfg.batch_size, shuffle=True)
-    val_loader = DataLoader(val_ds, batch_size=cfg.batch_size, shuffle=False)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
-    print(f"Series: {n_series}; days: {n_days}; train windows: {len(train_ds)}; val windows: {len(val_ds)}")
+    print(
+        f"Series: {n_series}; days: {n_days}; "
+        f"MLP seq_len: {cfg.mlp_seq_len}; Transformer seq_len: {cfg.transformer_seq_len}"
+    )
 
     cov_dim = x_cov.shape[-1]
     input_dim = 1 + cov_dim
     all_history: list[dict[str, float]] = []
-    pred_frames = [baseline_predictions(y, meta, cal, train_end, cfg.seq_len)]
+    pred_frames = [baseline_predictions(y, meta, cal, train_end, max(cfg.mlp_seq_len, cfg.transformer_seq_len))]
 
-    mlp = LagMLP(seq_len=cfg.seq_len, cov_dim=cov_dim, n_series=n_series)
-    mlp, hist = train_model("lag_mlp", mlp, train_loader, val_loader, cfg, device)
+    set_seed(cfg.seed + 1)
+    mlp = LagMLP(
+        seq_len=cfg.mlp_seq_len,
+        cov_dim=cov_dim,
+        n_series=n_series,
+        hidden_sizes=cfg.mlp_hidden,
+        dropout=cfg.mlp_dropout,
+        emb_dim=cfg.mlp_emb_dim,
+    )
+    mlp, hist = train_model("lag_mlp", mlp, mlp_train_loader, mlp_val_loader, cfg, device, lr=cfg.mlp_lr)
     all_history.extend(hist)
-    pred_frames.append(predict_model("lag_mlp", mlp, val_loader, meta, cal, device))
+    pred_frames.append(predict_model("lag_mlp", mlp, mlp_val_loader, meta, cal, device))
 
+    set_seed(cfg.seed + 2)
     transformer = TemporalTransformer(
         input_dim=input_dim,
         n_series=n_series,
-        seq_len=cfg.seq_len,
+        seq_len=cfg.transformer_seq_len,
         d_model=cfg.d_model,
         n_heads=cfg.n_heads,
         n_layers=cfg.n_layers,
         dropout=cfg.dropout,
     )
-    transformer, hist = train_model("temporal_transformer", transformer, train_loader, val_loader, cfg, device)
+    transformer, hist = train_model(
+        "temporal_transformer",
+        transformer,
+        transformer_train_loader,
+        transformer_val_loader,
+        cfg,
+        device,
+        lr=cfg.transformer_lr,
+    )
     all_history.extend(hist)
-    pred_frames.append(predict_model("temporal_transformer", transformer, val_loader, meta, cal, device))
+    pred_frames.append(predict_model("temporal_transformer", transformer, transformer_val_loader, meta, cal, device))
+
+    revin_cov_dim = cov_dim + 2
+    revin_input_dim = 1 + revin_cov_dim
+
+    set_seed(cfg.seed + 3)
+    revin_mlp = LagMLP(
+        seq_len=cfg.mlp_seq_len,
+        cov_dim=revin_cov_dim,
+        n_series=n_series,
+        hidden_sizes=cfg.mlp_hidden,
+        dropout=cfg.mlp_dropout,
+        emb_dim=cfg.mlp_emb_dim,
+    )
+    revin_mlp, hist = train_model(
+        "lag_mlp_revin",
+        revin_mlp,
+        mlp_revin_train_loader,
+        mlp_revin_val_loader,
+        cfg,
+        device,
+        lr=cfg.mlp_lr,
+    )
+    all_history.extend(hist)
+    pred_frames.append(predict_model("lag_mlp_revin", revin_mlp, mlp_revin_val_loader, meta, cal, device))
+
+    set_seed(cfg.seed + 4)
+    revin_transformer = TemporalTransformer(
+        input_dim=revin_input_dim,
+        n_series=n_series,
+        seq_len=cfg.transformer_seq_len,
+        d_model=cfg.d_model,
+        n_heads=cfg.n_heads,
+        n_layers=cfg.n_layers,
+        dropout=cfg.dropout,
+    )
+    revin_transformer, hist = train_model(
+        "temporal_transformer_revin",
+        revin_transformer,
+        transformer_revin_train_loader,
+        transformer_revin_val_loader,
+        cfg,
+        device,
+        lr=cfg.transformer_lr,
+    )
+    all_history.extend(hist)
+    pred_frames.append(
+        predict_model(
+            "temporal_transformer_revin",
+            revin_transformer,
+            transformer_revin_val_loader,
+            meta,
+            cal,
+            device,
+        )
+    )
 
     preds = pd.concat(pred_frames, ignore_index=True)
     metrics = compute_metrics(preds)

@@ -14,7 +14,7 @@ Retail Demand Forecasting with Temporal Deep Learning on Walmart M5 Sales Data
 
 - M5 Walmart sales dataset.
 - Aggregated item-level sales into 70 store-department series.
-- Inputs: previous 56 days of sales, calendar features, SNAP indicator, series identity.
+- Inputs: tuned rolling sales windows, calendar features, SNAP indicator, series identity.
 - Holdout: final 56 days.
 
 ## Slide 4 - Learning Formulation
@@ -29,12 +29,15 @@ Retail Demand Forecasting with Temporal Deep Learning on Walmart M5 Sales Data
 - 28-day moving average baseline.
 - Lag MLP with learned series embedding.
 - Temporal Transformer encoder trained from scratch.
+- RevIN variants for both neural models.
 
 ## Slide 6 - Training Setup
 
 - Loss: mean absolute error on normalized demand.
 - Optimizer: AdamW with weight decay.
 - Regularization: dropout and validation checkpoint selection.
+- RevIN normalizes each input window and reverses the transform after prediction.
+- Tuning: lookback length, learning rate, MLP width, Transformer width/depth, dropout, embedding size.
 - Metrics: MAE, RMSE, sMAPE, WAPE.
 
 ## Slide 7 - Results
@@ -43,8 +46,10 @@ Use `outputs/figures/model_mae_comparison.png`.
 
 Main result:
 
-- Lag MLP: MAE 54.8.
-- Temporal Transformer: MAE 59.8.
+- Lag MLP + RevIN: MAE 52.9.
+- Lag MLP: MAE 54.0.
+- Transformer + RevIN: MAE 56.6.
+- Temporal Transformer: MAE 59.2.
 - Seasonal naive: MAE 86.1.
 - Moving average: MAE 104.8.
 
@@ -53,7 +58,8 @@ Main result:
 Use `outputs/figures/training_curves.png` and one forecast plot.
 
 - Neural models beat simple baselines.
-- Transformer improves with training but does not beat MLP.
+- RevIN improves both MLP and Transformer.
+- Transformer improves with RevIN but does not beat MLP + RevIN.
 - Spikes remain difficult.
 
 ## Slide 9 - Safety and Ethics
@@ -65,5 +71,5 @@ Use `outputs/figures/training_curves.png` and one forecast plot.
 ## Slide 10 - Conclusion
 
 - Built a full data-to-model retail forecasting pipeline.
-- Best model is a lag MLP; Transformer is a useful advanced comparison.
+- Best model is Lag MLP + RevIN; Transformer + RevIN is a useful advanced comparison.
 - Next steps: add price features, item-level forecasting, probabilistic forecasts, inventory-cost evaluation.

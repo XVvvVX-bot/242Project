@@ -9,6 +9,9 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 
+# Per-candidate tuning scratch outputs; keep outputs/tuning_results.csv instead.
+outputs/tuning/
+
 # LaTeX build artifacts.
 overleaf/build/
 
