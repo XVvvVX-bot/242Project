@@ -282,6 +282,35 @@ PRESENTATION_HTML = r"""<!doctype html>
     }
     .step strong { display: block; font-size: 16px; margin-bottom: 8px; }
     .step span { color: var(--muted); font-size: 14px; line-height: 1.4; }
+    .schema {
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #ffffff;
+    }
+    .schema-title {
+      padding: 12px 14px;
+      background: #f2f5fa;
+      border-bottom: 1px solid var(--line);
+      font-size: 13px;
+      font-weight: 700;
+      color: #344054;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .schema-row {
+      display: grid;
+      grid-template-columns: 170px 1fr;
+      gap: 12px;
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--line);
+      font-size: 14px;
+      line-height: 1.35;
+    }
+    .schema-row:last-child { border-bottom: 0; }
+    .schema-row strong { color: var(--ink); }
+    .schema-row span { color: var(--muted); }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -346,7 +375,7 @@ PRESENTATION_HTML = r"""<!doctype html>
       h1 { font-size: 38px; }
       h2 { font-size: 32px; }
       .lead { font-size: 17px; }
-      .metric-grid, .card-grid, .process, .takeaway-grid { grid-template-columns: 1fr; }
+      .metric-grid, .card-grid, .process, .takeaway-grid, .schema-row { grid-template-columns: 1fr; }
       nav .link-button { display: none; }
     }
   </style>
@@ -399,6 +428,13 @@ PRESENTATION_HTML = r"""<!doctype html>
             <div class="step"><strong>Features</strong><span>Lagged demand, weekday/month cycles, events, SNAP, series ID.</span></div>
             <div class="step"><strong>Target</strong><span>Next-day unit demand for each store-department pair.</span></div>
             <div class="step"><strong>Validation</strong><span>Final 56 days held out chronologically.</span></div>
+          </div>
+          <div class="schema" aria-label="Data structure glance">
+            <div class="schema-title">Data structure glance</div>
+            <div class="schema-row"><strong>sales_train_validation.csv</strong><span>Rows are item-store series; columns include product/store metadata plus daily demand columns d_1 ... d_1913.</span></div>
+            <div class="schema-row"><strong>calendar.csv</strong><span>Maps each d_* day to date, weekday, month, event flags, and state-specific SNAP indicators.</span></div>
+            <div class="schema-row"><strong>Model panel</strong><span>Aggregated to 70 rows: store_id x dept_id, with one daily demand value per date.</span></div>
+            <div class="schema-row"><strong>Training example</strong><span>X = rolling history and calendar features; y = next-day unit demand; validation = last 56 days.</span></div>
           </div>
         </div>
       </section>
