@@ -26,25 +26,271 @@
       background: var(--bg);
     }
     header {
-      background: #ffffff;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(255, 255, 255, 0.96);
       border-bottom: 1px solid var(--line);
-      padding: 18px 28px 14px;
+      padding: 12px 28px;
+      backdrop-filter: blur(10px);
+    }
+    .topbar {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 230px;
+    }
+    .brand strong {
+      font-size: 15px;
+      line-height: 1.2;
+    }
+    .brand span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    nav a, .presentation-button {
+      border: 1px solid transparent;
+      border-radius: 6px;
+      color: #344054;
+      background: transparent;
+      padding: 7px 9px;
+      font-size: 13px;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    nav a:hover, .presentation-button:hover {
+      border-color: var(--line);
+      background: #f6f8fb;
     }
     h1 {
       margin: 0;
-      font-size: 24px;
-      line-height: 1.2;
+      font-size: 46px;
+      line-height: 1.05;
       letter-spacing: 0;
     }
     .subtitle {
-      margin: 6px 0 0;
-      color: var(--muted);
-      font-size: 14px;
+      margin: 16px 0 0;
+      color: #4b5565;
+      font-size: 18px;
+      line-height: 1.5;
+      max-width: 780px;
     }
     main {
       max-width: 1280px;
       margin: 0 auto;
-      padding: 22px 24px 32px;
+      padding: 24px 24px 40px;
+    }
+    .presentation-section {
+      scroll-margin-top: 82px;
+    }
+    .hero {
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      overflow: visible;
+      min-height: calc(100vh - 76px);
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+      gap: 30px;
+      align-items: center;
+      padding: 38px 0 32px;
+    }
+    .hero-copy {
+      padding: 8px 0;
+    }
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 24px;
+    }
+    .primary-link, .secondary-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 14px;
+      text-decoration: none;
+      border: 1px solid var(--accent);
+    }
+    .primary-link {
+      background: var(--accent);
+      color: #ffffff;
+    }
+    .secondary-link {
+      color: var(--accent);
+      background: #ffffff;
+    }
+    .hero-panel {
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      box-shadow: 0 18px 38px rgba(23, 32, 42, 0.08);
+    }
+    .hero-panel h2 {
+      font-size: 18px;
+      margin-bottom: 14px;
+    }
+    .hero-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .hero-metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 13px;
+      min-height: 106px;
+      background: #fbfcff;
+    }
+    .hero-metric .value {
+      font-size: 30px;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .hero-metric .name {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .talk-track {
+      margin-top: 14px;
+      color: #475467;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .section-intro {
+      padding: 22px 24px 0;
+    }
+    .section-intro h2 {
+      font-size: 25px;
+      margin-bottom: 8px;
+    }
+    .section-intro p {
+      max-width: 860px;
+      color: var(--muted);
+      margin: 0 0 18px;
+      line-height: 1.5;
+      font-size: 15px;
+    }
+    .story-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      padding: 0 24px 24px;
+    }
+    .story-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcff;
+      padding: 16px;
+      min-height: 150px;
+    }
+    .story-card h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+    .story-card p {
+      margin: 0;
+      color: #596579;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+    .story-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      margin-bottom: 12px;
+      border-radius: 50%;
+      background: #e8f0ff;
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .result-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      padding: 0 24px 24px;
+    }
+    .result-card {
+      border-left: 4px solid var(--accent);
+      background: #fbfcff;
+      border-radius: 8px;
+      padding: 14px;
+      min-height: 108px;
+    }
+    .result-card .label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+    .result-card .value {
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .result-card .note {
+      color: #596579;
+      font-size: 12px;
+      margin-top: 8px;
+      line-height: 1.35;
+    }
+    .explorer-lead {
+      padding: 20px 24px;
+      background: #17202a;
+      color: #ffffff;
+      border-radius: 8px;
+      margin-bottom: 18px;
+    }
+    .explorer-lead h2 {
+      font-size: 24px;
+      margin-bottom: 6px;
+    }
+    .explorer-lead p {
+      color: #d9dee7;
+      margin: 0;
+      max-width: 900px;
+      line-height: 1.5;
+    }
+    body.present-mode {
+      background: #ffffff;
+    }
+    body.present-mode header {
+      position: static;
+    }
+    body.present-mode .presentation-section {
+      min-height: 92vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    body.present-mode .hero {
+      display: grid;
+    }
+    body.present-mode table {
+      font-size: 15px;
     }
     .controls {
       display: grid;
@@ -235,19 +481,177 @@
     }
     @media (max-width: 820px) {
       main { padding: 16px; }
-      .controls, .two-col { grid-template-columns: 1fr; }
+      .topbar { align-items: flex-start; }
+      nav { display: none; }
+      h1 { font-size: 34px; }
+      .hero { grid-template-columns: 1fr; min-height: auto; padding-top: 18px; }
+      .hero-metrics, .story-grid, .result-strip, .controls, .two-col { grid-template-columns: 1fr; }
       .metric-grid { grid-template-columns: repeat(2, minmax(140px, 1fr)); }
       header { padding: 16px; }
-      h1 { font-size: 21px; }
+      .subtitle { font-size: 16px; }
+    }
+    @media (max-width: 540px) {
+      .metric-grid { grid-template-columns: 1fr; }
+      h1 { font-size: 30px; }
     }
   </style>
 </head>
 <body>
   <header>
-    <h1>Retail Demand Forecasting Dashboard</h1>
-    <p class="subtitle">Interactive validation results for Walmart M5 store-department demand forecasts.</p>
+    <div class="topbar">
+      <div class="brand">
+        <strong>Retail Demand Forecasting</strong>
+        <span>Walmart M5 | trained models | final dashboard</span>
+      </div>
+      <nav aria-label="Presentation sections">
+        <a href="#overview">Overview</a>
+        <a href="#data">Data</a>
+        <a href="#models">Models</a>
+        <a href="#results">Results</a>
+        <a href="#explorer">Explorer</a>
+        <button class="presentation-button" id="presentButton" type="button">Presentation Mode</button>
+      </nav>
+    </div>
   </header>
   <main>
+    <section class="presentation-section hero" id="overview">
+      <div class="hero-copy">
+        <h1>Forecasting store-department retail demand from real sales data</h1>
+        <p class="subtitle">This project trains our own neural forecasting models on Walmart M5 sales data, compares them against practical retail baselines, and uses this dashboard to explain the full pipeline from data to decisions.</p>
+        <div class="hero-actions">
+          <a class="primary-link" href="#results">Show final result</a>
+          <a class="secondary-link" href="#explorer">Open forecast explorer</a>
+        </div>
+      </div>
+      <div class="hero-panel">
+        <h2>Presentation Summary</h2>
+        <div class="hero-metrics">
+          <div class="hero-metric">
+            <div class="value">70</div>
+            <div class="name">store-department demand series</div>
+          </div>
+          <div class="hero-metric">
+            <div class="value">56</div>
+            <div class="name">holdout days for validation</div>
+          </div>
+          <div class="hero-metric">
+            <div class="value">52.9</div>
+            <div class="name">best MAE from Lag MLP + RevIN</div>
+          </div>
+          <div class="hero-metric">
+            <div class="value">8.79%</div>
+            <div class="name">best WAPE on final validation</div>
+          </div>
+        </div>
+        <p class="talk-track">Talk track: the goal is practical short-term demand planning. We aggregate SKU-level M5 sales into department-level operational series, train models from scratch, and show whether neural forecasting and RevIN beat simple rules.</p>
+      </div>
+    </section>
+
+    <section class="presentation-section" id="data">
+      <div class="section-intro">
+        <h2>Data and Forecasting Task</h2>
+        <p>The dataset is the public M5 Walmart sales data. We aggregate item-level sales into store-department demand series and ask each model to predict tomorrow's demand using a recent rolling history plus calendar signals.</p>
+      </div>
+      <div class="story-grid">
+        <div class="story-card">
+          <span class="story-number">1</span>
+          <h3>Operational target</h3>
+          <p>Daily unit demand for each store and department pair, useful for replenishment, staffing, and exception monitoring.</p>
+        </div>
+        <div class="story-card">
+          <span class="story-number">2</span>
+          <h3>Input signals</h3>
+          <p>Recent sales history, day-of-week and month cycles, event indicator, SNAP indicator, and learned series identity.</p>
+        </div>
+        <div class="story-card">
+          <span class="story-number">3</span>
+          <h3>Validation design</h3>
+          <p>The final 56 days are held out chronologically, so each forecast is evaluated like a real future prediction.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="presentation-section" id="models">
+      <div class="section-intro">
+        <h2>Modeling Approach</h2>
+        <p>We compare simple retail heuristics against two neural architectures trained on our prepared data. Reversible instance normalization is added as a practical experiment for handling local demand shifts.</p>
+      </div>
+      <div class="story-grid">
+        <div class="story-card">
+          <span class="story-number">A</span>
+          <h3>Baselines</h3>
+          <p>Seasonal naive and 28-day moving average provide practical reference points that a planner could understand immediately.</p>
+        </div>
+        <div class="story-card">
+          <span class="story-number">B</span>
+          <h3>Lag MLP</h3>
+          <p>A feed-forward neural model learns from lagged sales, calendar features, and store-department embeddings.</p>
+        </div>
+        <div class="story-card">
+          <span class="story-number">C</span>
+          <h3>Temporal Transformer</h3>
+          <p>A Transformer encoder reads the lag window as a sequence and learns which prior days matter through self-attention.</p>
+        </div>
+      </div>
+      <div class="story-grid">
+        <div class="story-card">
+          <span class="story-number">D</span>
+          <h3>RevIN experiment</h3>
+          <p>Each window is normalized by its own mean and standard deviation, then predictions are transformed back to unit-sales scale.</p>
+        </div>
+        <div class="story-card">
+          <span class="story-number">E</span>
+          <h3>Tuning scope</h3>
+          <p>The sweep varies lookback length, learning rate, model width/depth, dropout, and embedding size for both neural families.</p>
+        </div>
+        <div class="story-card">
+          <span class="story-number">F</span>
+          <h3>Selected settings</h3>
+          <p>Final MLP uses 84 days and 384/192 hidden layers. Final Transformer uses 56 days, d_model 96, and two encoder layers.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="presentation-section" id="results">
+      <div class="section-intro">
+        <h2>Final Result</h2>
+        <p>The tuned RevIN MLP is the best model overall. RevIN also improves the Transformer, confirming that local window normalization is useful for this nonstationary retail demand task.</p>
+      </div>
+      <div class="result-strip">
+        <div class="result-card" style="border-left-color: var(--purple)">
+          <div class="label">Best model</div>
+          <div class="value">Lag MLP + RevIN</div>
+          <div class="note">Lowest global validation MAE.</div>
+        </div>
+        <div class="result-card" style="border-left-color: var(--purple)">
+          <div class="label">Best MAE</div>
+          <div class="value">52.9</div>
+          <div class="note">Average absolute units per store-department day.</div>
+        </div>
+        <div class="result-card" style="border-left-color: var(--teal)">
+          <div class="label">Transformer gain from RevIN</div>
+          <div class="value">-2.6 MAE</div>
+          <div class="note">59.2 down to 56.6 after RevIN.</div>
+        </div>
+        <div class="result-card" style="border-left-color: var(--green)">
+          <div class="label">Takeaway</div>
+          <div class="value">Tuned simplicity wins</div>
+          <div class="note">The compact MLP beats the larger attention model here.</div>
+        </div>
+      </div>
+      <div class="table-wrap" style="padding: 0 24px 24px">
+        <table>
+          <thead><tr><th>Model</th><th>MAE</th><th>RMSE</th><th>sMAPE</th><th>WAPE</th></tr></thead>
+          <tbody id="presentationMetricBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="explorer-lead presentation-section" id="explorer">
+      <h2>Interactive Forecast Explorer</h2>
+      <p>Use this section during Q&A: choose any store-department series, toggle true demand and model forecasts, and compare both global and selected-series errors.</p>
+    </div>
+
     <div class="controls">
       <div>
         <label for="seriesSelect">Store-department series</label>
@@ -330,9 +734,35 @@
       series: "CA_1_FOODS_3",
       visible: new Set(["actual", "lag_mlp", "lag_mlp_revin", "temporal_transformer_revin", "seasonal_naive_7"])
     };
+    const presentationTargets = ["overview", "data", "models", "results", "explorer"];
 
     function formatNumber(value, digits = 2) {
       return Number(value).toLocaleString(undefined, { maximumFractionDigits: digits, minimumFractionDigits: digits });
+    }
+
+    function initPresentationControls() {
+      const button = document.getElementById("presentButton");
+      button.addEventListener("click", () => {
+        document.body.classList.toggle("present-mode");
+        button.textContent = document.body.classList.contains("present-mode") ? "Exit Presentation" : "Presentation Mode";
+        document.getElementById("overview").scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+      document.addEventListener("keydown", event => {
+        if (!document.body.classList.contains("present-mode")) return;
+        if (!["ArrowRight", "ArrowDown", "PageDown", "ArrowLeft", "ArrowUp", "PageUp"].includes(event.key)) return;
+        const currentTop = window.scrollY;
+        const positions = presentationTargets.map(id => {
+          const el = document.getElementById(id);
+          return { id, top: el.getBoundingClientRect().top + window.scrollY };
+        });
+        const currentIndex = positions.reduce((best, item, idx) => {
+          return Math.abs(item.top - currentTop) < Math.abs(positions[best].top - currentTop) ? idx : best;
+        }, 0);
+        const direction = ["ArrowRight", "ArrowDown", "PageDown"].includes(event.key) ? 1 : -1;
+        const next = Math.max(0, Math.min(positions.length - 1, currentIndex + direction));
+        document.getElementById(positions[next].id).scrollIntoView({ behavior: "smooth", block: "start" });
+        event.preventDefault();
+      });
     }
 
     function initControls() {
@@ -368,6 +798,19 @@
         label.appendChild(span);
         toggles.appendChild(label);
       });
+    }
+
+    function renderPresentationMetrics() {
+      const body = document.getElementById("presentationMetricBody");
+      body.innerHTML = "";
+      DATA.metrics
+        .slice()
+        .sort((a, b) => a.MAE - b.MAE)
+        .forEach(row => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `<td>${DATA.model_labels[row.model]}</td><td>${formatNumber(row.MAE, 1)}</td><td>${formatNumber(row.RMSE, 1)}</td><td>${formatNumber(row.sMAPE_pct, 1)}%</td><td>${formatNumber(row.WAPE_pct, 1)}%</td>`;
+          body.appendChild(tr);
+        });
     }
 
     function recordsForSeries() {
@@ -542,7 +985,9 @@
       renderTables(records);
     }
 
+    initPresentationControls();
     initControls();
+    renderPresentationMetrics();
     render();
   </script>
 </body>
