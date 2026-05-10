@@ -566,14 +566,14 @@ PRESENTATION_HTML = r"""<!doctype html>
         <div>
           <h2>What we learned</h2>
           <p class="lead">Neural forecasting helps, but model complexity is not automatically better. For this aggregated retail task, tuned normalization and strong lag features matter most.</p>
-          <p class="speaker-note">A good next step would add price and promotion features, probabilistic forecasts, and inventory-cost evaluation.</p>
+          <p class="speaker-note">The Transformer is still useful as an advanced comparison, but the validation result suggests this dataset favors a compact model with strong short-term lag features.</p>
         </div>
         <div class="panel">
           <div class="card-grid">
             <div class="card"><span class="tag">1</span><h3>Practical baselines matter</h3><p>Seasonal naive is simple but still meaningful for retail weekly patterns.</p></div>
             <div class="card"><span class="tag">2</span><h3>RevIN is useful</h3><p>Local window normalization improved both neural model families.</p></div>
-            <div class="card"><span class="tag">3</span><h3>MLP wins here</h3><p>The compact lag model beat the larger attention model after tuning.</p></div>
-            <div class="card"><span class="tag">4</span><h3>Inspect live</h3><p><a class="link-button primary" href="interactive_dashboard.html">Open Interactive Dashboard</a></p></div>
+            <div class="card"><span class="tag">3</span><h3>Why MLP won here</h3><p>The task is aggregated to 70 department-store series, so demand is smoother and dominated by recent lags, weekly seasonality, and local level. A compact MLP can learn this signal with less variance and less data hunger.</p></div>
+            <div class="card"><span class="tag">4</span><h3>When Transformer may win</h3><p>Attention is more likely to win with longer histories, richer covariates such as price and promotion, item-level scale, many more series, or patterns where distant events interact with recent demand.</p></div>
           </div>
         </div>
       </section>
