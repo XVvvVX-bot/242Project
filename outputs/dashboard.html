@@ -4,6 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Retail Demand Forecasting Presentation</title>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [["\\(", "\\)"], ["$", "$"]], displayMath: [["\\[", "\\]"]] },
+      svg: { fontCache: "global" }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
   <style>
     :root {
       --ink: #17202a;
@@ -271,9 +278,8 @@
       background: #f8fbff;
       padding: 14px 16px;
       margin-bottom: 12px;
-      font-family: Consolas, "Courier New", monospace;
       color: #243b64;
-      font-size: 16px;
+      font-size: 18px;
       line-height: 1.45;
     }
     .flow-list {
@@ -410,9 +416,22 @@
           <p class="speaker-note">This is useful in retail because demand can shift after holidays, events, promotions, stockout recovery, or gradual trend changes.</p>
         </div>
         <div class="formula-panel">
-          <div class="formula">window x = [y(t-L), ..., y(t-1)]<br>mu = mean(x), sigma = std(x)</div>
-          <div class="formula">z = (x - mu) / sigma<br>model input = z plus calendar and series features</div>
-          <div class="formula">model predicts z_hat(t)<br>final forecast y_hat(t) = z_hat(t) * sigma + mu</div>
+          <div class="formula">\[
+            \mathbf{x}_{s,t} = \left[y_{s,t-L}, \ldots, y_{s,t-1}\right],
+            \quad
+            \mu_{s,t} = \frac{1}{L}\sum_{i=1}^{L} x_{s,t,i}
+          \]</div>
+          <div class="formula">\[
+            \sigma_{s,t} =
+            \sqrt{\frac{1}{L}\sum_{i=1}^{L}\left(x_{s,t,i}-\mu_{s,t}\right)^2 + \epsilon},
+            \quad
+            z_{s,t,i} = \frac{x_{s,t,i}-\mu_{s,t}}{\sigma_{s,t}}
+          \]</div>
+          <div class="formula">\[
+            \hat{z}_{s,t}=f_{\theta}\left(\mathbf{z}_{s,t}, \mathbf{c}_{s,t}, s\right),
+            \quad
+            \hat{y}_{s,t} = \hat{z}_{s,t}\sigma_{s,t} + \mu_{s,t}
+          \]</div>
           <div class="flow-list">
             <div class="flow-item"><strong>1</strong><span>Normalize each rolling input window using only past values in that window.</span></div>
             <div class="flow-item"><strong>2</strong><span>Train the MLP or Transformer to predict next-day demand in this local normalized space.</span></div>
