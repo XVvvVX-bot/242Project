@@ -49,6 +49,8 @@ Best model by MAE: lag_mlp_revin
 
 Use `outputs/figures/training_curves.png` to discuss underfitting/overfitting. Use `outputs/figures/model_mae_comparison.png` to compare the neural models against simple operational baselines. Forecast plots for high-volume series are saved under `outputs/figures/forecast_*.png`.
 
+Recorded presentation: https://berkeley.box.com/s/a0uyhnly3gl3xcgsjwc2tdk38zkiba8d
+
 ## Safety, security, and ethics
 
 The model should not directly automate replenishment without guardrails. Forecast errors can create stockouts for essential goods or overstock waste for perishable goods. Historical demand reflects past prices, promotions, local demographics, and possible stockout censoring; these biases can be amplified by a deployed system. A practical deployment should include human override, service-level constraints, uncertainty estimates, and monitoring for drift after holidays, economic shocks, or assortment changes.

@@ -101,3 +101,5 @@ Key outputs:
 - `outputs/figures/model_mae_comparison.png`
 - `outputs/figures/training_curves.png`
 - `outputs/figures/forecast_CA_1_FOODS_3.png`
+
+Recorded presentation: https://berkeley.box.com/s/a0uyhnly3gl3xcgsjwc2tdk38zkiba8d
